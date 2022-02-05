@@ -2,8 +2,6 @@ mod client;
 mod server;
 
 fn main() {
-    println!("Hello, world!");
-
     match std::env::args().nth(1).expect("no mode given").as_str() {
         "server" => server::server(),
         "client" => client::client(std::env::args().nth(2).expect("no ip given").as_str()),
