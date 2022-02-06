@@ -1,71 +1,48 @@
-use std::io::{self, Error, Write};
+use std::{convert::TryInto, io::Error};
 
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use tokio::{
+    io::{AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWriteExt, BufReader},
+    net::{TcpListener, TcpStream},
+};
 
-use futures::{Stream, StreamExt};
-use tokio::io::AsyncWriteExt;
-use tokio::net::{TcpListener, TcpStream};
-use tokio_serde::{formats::Bincode as SerializeProvider, Framed};
-use tokio_util::codec::Framed as CodecFramed;
-use tokio_util::codec::LengthDelimitedCodec;
+use crate::netargs;
 
-use crate::connector::{ClientMessage, ServerMessage};
-
-type ServerFramed = Framed<
-    CodecFramed<TcpStream, LengthDelimitedCodec>,
-    ClientMessage,
-    ServerMessage,
-    SerializeProvider<ClientMessage, ServerMessage>,
->;
-
-struct Seller {
-    connection: ServerFramed,
-}
-
-impl Seller {
-    pub async fn new(tcp_stream: TcpStream) -> Result<Self, Error> {
-        let length_delimited = CodecFramed::new(tcp_stream, LengthDelimitedCodec::new());
-
-        let connection = Framed::new(length_delimited, SerializeProvider::default());
-
-        Ok(Self { connection })
-    }
-}
-
-impl Stream for Seller {
-    type Item = Result<ClientMessage, Error>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let self_mut = &mut self.as_mut();
-
-        match Pin::new(&mut self_mut.connection).poll_next(cx) {
-            Poll::Ready(Some(val)) => Poll::Ready(Some(val.map_err(|err| err.into()))),
-            Poll::Ready(None) => Poll::Ready(None),
-            Poll::Pending => Poll::Pending,
-        }
-    }
-}
-
-async fn handle_client(stream1: TcpStream, stream2: TcpStream) -> Result<(), Error> {
-    let mut seller1 = Seller::new(stream1).await?;
-    let mut seller2 = Seller::new(stream2).await?;
-
+async fn handle_client<T>(mut stream1: T, mut stream2: T) -> Result<(), Error>
+where
+    T: AsyncReadExt + std::marker::Unpin,
+{
     let mut last_read_stream_2 = true;
     let mut out = tokio::io::stdout();
     loop {
-        let val;
+        eprintln!("X, {}", last_read_stream_2);
         if last_read_stream_2 {
-            val = seller1.next();
+            if let Ok(size) = stream1.read_u64().await {
+                eprintln!("size = {}", size);
+                let mut buffer = Vec::with_capacity(size.try_into().unwrap());
+                unsafe {
+                    buffer.set_len(size.try_into().unwrap());
+                }
+                stream1.read_exact(&mut buffer).await?;
+                out.write_all(&buffer).await.unwrap();
+            } else {
+                eprintln!("die at A");
+                break;
+            }
         } else {
-            val = seller2.next();
+            if let Ok(size) = stream2.read_u64().await {
+                eprintln!("size = {}", size);
+                let mut buffer = Vec::with_capacity(size.try_into().unwrap());
+                unsafe {
+                    buffer.set_len(size.try_into().unwrap());
+                }
+                stream2.read_exact(&mut buffer).await?;
+                out.write_all(&buffer).await.unwrap();
+            } else {
+                eprintln!("die at B");
+                break;
+            }
         }
         last_read_stream_2 = !last_read_stream_2;
-        if let Some(nval) = val.await {
-            out.write_all(&nval.unwrap().data).await.unwrap();
-        } else {
-            break;
-        }
     }
     out.flush().await.unwrap();
 
@@ -73,16 +50,23 @@ async fn handle_client(stream1: TcpStream, stream2: TcpStream) -> Result<(), Err
 }
 
 pub async fn server() -> Result<(), Error> {
-    let listener1 = TcpListener::bind("0.0.0.0:3333").await.unwrap();
+    let s1 = format!("0.0.0.0:3333");
+    let s2 = format!("0.0.0.0:3334");
+
+    let listener1 = TcpListener::bind(s1).await.unwrap();
     eprintln!("Server listening on port 3333");
-    let listener2 = TcpListener::bind("0.0.0.0:3334").await.unwrap();
+    let listener2 = TcpListener::bind(s2).await.unwrap();
     eprintln!("Server listening on port 3334");
     let (stream1_rx, stream1_addr) = listener1.accept().await.unwrap();
     let (stream2_rx, stream2_addr) = listener2.accept().await.unwrap();
 
     eprintln!("New connection on A: {}", stream1_addr);
     eprintln!("New connection on B: {}", stream2_addr);
-    handle_client(stream1_rx, stream2_rx).await?;
+    handle_client(
+        BufReader::with_capacity(4 * netargs::BLOCK_SIZE, stream1_rx),
+        BufReader::with_capacity(4 * netargs::BLOCK_SIZE, stream2_rx),
+    )
+    .await?;
 
     // close the socket server
     drop(listener1);

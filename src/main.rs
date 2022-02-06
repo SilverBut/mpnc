@@ -1,5 +1,4 @@
 mod client;
-mod connector;
 mod netargs;
 mod server;
 
