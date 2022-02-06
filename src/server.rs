@@ -6,7 +6,7 @@ use std::task::{Context, Poll};
 use futures::{Stream, StreamExt};
 use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener, TcpStream};
-use tokio_serde::{formats::MessagePack, Framed};
+use tokio_serde::{formats::Bincode as SerializeProvider, Framed};
 use tokio_util::codec::Framed as CodecFramed;
 use tokio_util::codec::LengthDelimitedCodec;
 
@@ -16,7 +16,7 @@ type ServerFramed = Framed<
     CodecFramed<TcpStream, LengthDelimitedCodec>,
     ClientMessage,
     ServerMessage,
-    MessagePack<ClientMessage, ServerMessage>,
+    SerializeProvider<ClientMessage, ServerMessage>,
 >;
 
 struct Seller {
@@ -27,7 +27,7 @@ impl Seller {
     pub async fn new(tcp_stream: TcpStream) -> Result<Self, Error> {
         let length_delimited = CodecFramed::new(tcp_stream, LengthDelimitedCodec::new());
 
-        let connection = Framed::new(length_delimited, MessagePack::default());
+        let connection = Framed::new(length_delimited, SerializeProvider::default());
 
         Ok(Self { connection })
     }

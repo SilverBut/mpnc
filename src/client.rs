@@ -1,5 +1,6 @@
 use crate::{connector, netargs};
 use futures::SinkExt;
+use tokio::io::AsyncReadExt;
 
 use std::io::{self, Error, Read};
 
@@ -11,16 +12,16 @@ pub async fn client(addr: &str) -> Result<(), Error> {
     let mut stream2_tx = connector::Dealer::new(s2.as_str()).await?;
 
     let mut last_write_stream_2 = true;
+    let mut input = tokio::io::stdin();
     loop {
         let mut buffer = vec![0u8; netargs::BLOCK_SIZE];
-        let size = io::stdin().read(&mut buffer[..]).unwrap();
+        let size = input.read(&mut buffer).await.unwrap();
         if size == 0 {
             eprintln!("EOF");
             break;
         }
-        let msg = connector::ServerMessage {
-            data: buffer[..size].to_vec(),
-        };
+        buffer.truncate(size);
+        let msg = connector::ServerMessage { data: buffer };
         if last_write_stream_2 {
             stream1_tx.feed(msg).await?;
         } else {

@@ -1,11 +1,12 @@
-use futures::{Sink};
+use futures::Sink;
 use serde::{Deserialize, Serialize};
 use std::io::Error;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use tokio::io::BufWriter;
 
 use tokio::net::TcpStream;
-use tokio_serde::{formats::MessagePack, Framed};
+use tokio_serde::{formats::Bincode as SerializeProvider, Framed};
 use tokio_util::codec::Framed as CodecFramed;
 use tokio_util::codec::LengthDelimitedCodec;
 
@@ -17,10 +18,10 @@ pub struct ClientMessage {
 pub type ServerMessage = ClientMessage;
 
 type ClientFramed = Framed<
-    CodecFramed<TcpStream, LengthDelimitedCodec>,
+    CodecFramed<BufWriter<TcpStream>, LengthDelimitedCodec>,
     ClientMessage,
     ServerMessage,
-    MessagePack<ClientMessage, ServerMessage>,
+    SerializeProvider<ClientMessage, ServerMessage>,
 >;
 
 pub struct Dealer {
@@ -29,11 +30,11 @@ pub struct Dealer {
 
 impl Dealer {
     pub async fn new(addr: &str) -> Result<Self, Error> {
-        let tcp_stream = TcpStream::connect(addr).await?;
+        let tcp_stream = BufWriter::new(TcpStream::connect(addr).await?);
 
         let length_delimited = CodecFramed::new(tcp_stream, LengthDelimitedCodec::new());
 
-        let connection = Framed::new(length_delimited, MessagePack::default());
+        let connection = Framed::new(length_delimited, SerializeProvider::default());
 
         Ok(Self { connection })
     }

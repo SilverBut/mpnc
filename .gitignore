@@ -1,2 +1,7 @@
 /target
 send.sh
+a.file
+b.file
+cargo-flamegraph*
+client.svg
+server.svg
