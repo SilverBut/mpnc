@@ -8,7 +8,7 @@ use std::{convert::TryInto, io::Error};
 
 pub async fn client(addr: &str) -> Result<(), Error> {
     let s1 = format!("{}:3333", addr);
-    let s2 = format!("{}:3334", addr);
+    let s2 = format!("{}:3335", addr);
 
     let mut stream1_tx = TcpStream::connect(s1.as_str()).await?;
     let mut stream2_tx = TcpStream::connect(s2.as_str()).await?;

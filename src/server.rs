@@ -48,12 +48,12 @@ where
 
 pub async fn server() -> Result<(), Error> {
     let s1 = format!("0.0.0.0:3333");
-    let s2 = format!("0.0.0.0:3334");
+    let s2 = format!("0.0.0.0:3335");
 
     let listener1 = TcpListener::bind(s1).await.unwrap();
     eprintln!("Server listening on port 3333");
     let listener2 = TcpListener::bind(s2).await.unwrap();
-    eprintln!("Server listening on port 3334");
+    eprintln!("Server listening on port 3335");
     let (stream1_rx, stream1_addr) = listener1.accept().await.unwrap();
     let (stream2_rx, stream2_addr) = listener2.accept().await.unwrap();
 
