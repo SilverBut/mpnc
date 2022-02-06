@@ -1,6 +1,6 @@
 use crate::netargs;
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
+    io::{AsyncReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
 };
 
