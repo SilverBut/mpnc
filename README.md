@@ -64,3 +64,9 @@ But I would recommend you just go out and by a 10Gbps NIC. It's not that cheap a
 ## License
 
 GPLv2
+
+## Sponsor?
+
+Thanks! But do you really want to pay something for this?
+
+Ethereum address: `0xa55cF178190d1Ba7C18Fa942e18F2230076Fe1E8`
