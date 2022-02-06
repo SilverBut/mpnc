@@ -10,14 +10,8 @@ pub async fn client(addr: &str) -> Result<(), Error> {
     let s1 = format!("{}:3333", addr);
     let s2 = format!("{}:3334", addr);
 
-    let mut stream1_tx = BufWriter::with_capacity(
-        4 * netargs::BLOCK_SIZE,
-        TcpStream::connect(s1.as_str()).await?,
-    );
-    let mut stream2_tx = BufWriter::with_capacity(
-        4 * netargs::BLOCK_SIZE,
-        TcpStream::connect(s2.as_str()).await?,
-    );
+    let mut stream1_tx = TcpStream::connect(s1.as_str()).await?;
+    let mut stream2_tx = TcpStream::connect(s2.as_str()).await?;
 
     let mut last_write_stream_2 = true;
     let mut input = BufReader::new(tokio::io::stdin());
@@ -33,7 +27,6 @@ pub async fn client(addr: &str) -> Result<(), Error> {
             eprintln!("EOF");
             break;
         }
-        eprintln!("X, {}", last_write_stream_2);
         if last_write_stream_2 {
             stream1_tx = go(stream1_tx, size, buffer).await?;
         } else {
@@ -51,7 +44,6 @@ async fn go<T>(mut tx: T, size: usize, buffer: Vec<u8>) -> Result<T, Error>
 where
     T: tokio::io::AsyncWriteExt + std::marker::Unpin,
 {
-    eprintln!("size = {}", size);
     tx.write_u64(size.try_into().unwrap()).await?;
     tx.write_all(&buffer[..size]).await?;
     Ok(tx)

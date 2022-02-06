@@ -14,10 +14,8 @@ where
     let mut last_read_stream_2 = true;
     let mut out = tokio::io::stdout();
     loop {
-        eprintln!("X, {}", last_read_stream_2);
         if last_read_stream_2 {
             if let Ok(size) = stream1.read_u64().await {
-                eprintln!("size = {}", size);
                 let mut buffer = Vec::with_capacity(size.try_into().unwrap());
                 unsafe {
                     buffer.set_len(size.try_into().unwrap());
@@ -30,7 +28,6 @@ where
             }
         } else {
             if let Ok(size) = stream2.read_u64().await {
-                eprintln!("size = {}", size);
                 let mut buffer = Vec::with_capacity(size.try_into().unwrap());
                 unsafe {
                     buffer.set_len(size.try_into().unwrap());
