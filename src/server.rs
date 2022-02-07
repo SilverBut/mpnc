@@ -47,6 +47,8 @@ where
 }
 
 pub async fn server() -> Result<(), Error> {
+    // why the distance is 2, instead of 1?
+    // see this: https://www.llcblog.cn/2020/01/10/how-bonding-lacp-xmit-hash-work/
     let s1 = format!("0.0.0.0:3333");
     let s2 = format!("0.0.0.0:3335");
 
